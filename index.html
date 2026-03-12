@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regex Playground</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #18181b;
+  --surface: #27272a;
+  --border:  #3f3f46;
+  --text:    #fafafa;
+  --text-2:  #a1a1aa;
+  --accent:  #a855f7;
+  --match:   rgba(168,85,247,0.35);
+  --match-border: #a855f7;
+  --error:   #f87171;
+  --green:   #4ade80;
+  --mono: 'Courier New', monospace;
+  --sans: system-ui, sans-serif;
+  --r: 6px;
+}
+[data-theme="light"] {
+  --bg:      #fafafa;
+  --surface: #ffffff;
+  --border:  #e4e4e7;
+  --text:    #18181b;
+  --text-2:  #71717a;
+  --accent:  #7c3aed;
+  --match:   rgba(124,58,237,0.15);
+  --match-border: #7c3aed;
+  --error:   #dc2626;
+  --green:   #16a34a;
+}
+
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+
+header { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+.logo { font-family: var(--mono); font-size: 15px; font-weight: bold; color: var(--accent); }
+.logo span { color: var(--text-2); font-weight: normal; }
+.theme-btn { background: transparent; border: 1px solid var(--border); border-radius: var(--r); color: var(--text-2); cursor: pointer; padding: 4px 10px; font-size: 13px; transition: background 0.15s; }
+.theme-btn:hover { background: var(--surface); }
+
+main { flex: 1; display: grid; grid-template-rows: auto 1fr auto; gap: 0; max-width: 900px; width: 100%; margin: 0 auto; padding: 24px; gap: 16px; }
+
+.panel { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.panel-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--text-2); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* Regex input row */
+.regex-row { display: flex; align-items: center; gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.regex-delim { padding: 10px 10px; font-family: var(--mono); font-size: 18px; color: var(--text-2); background: var(--bg); border-right: 1px solid var(--border); user-select: none; }
+.regex-delim.right { border-right: none; border-left: 1px solid var(--border); }
+#pattern { flex: 1; font-family: var(--mono); font-size: 15px; padding: 10px 12px; background: transparent; border: none; color: var(--text); outline: none; }
+#flags { width: 72px; font-family: var(--mono); font-size: 14px; padding: 10px 8px; background: transparent; border: none; color: var(--accent); outline: none; border-left: 1px solid var(--border); }
+
+.status { font-size: 12px; font-family: var(--mono); padding: 2px 8px; border-radius: 4px; }
+.status.ok  { color: var(--green); }
+.status.err { color: var(--error); }
+
+/* Text area */
+#test-text { width: 100%; min-height: 160px; font-family: var(--mono); font-size: 13px; padding: 14px; background: var(--bg); border: none; color: var(--text); resize: vertical; outline: none; line-height: 1.7; }
+.highlight-layer { position: relative; }
+.highlighted { padding: 14px; font-family: var(--mono); font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; min-height: 160px; background: var(--bg); }
+.match-span { background: var(--match); border-bottom: 2px solid var(--match-border); border-radius: 2px; }
+
+/* Match list */
+.match-list { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.match-item { display: flex; gap: 12px; align-items: baseline; }
+.match-idx { font-family: var(--mono); font-size: 11px; color: var(--text-2); min-width: 28px; }
+.match-val { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.match-pos { font-size: 11px; color: var(--text-2); }
+.no-matches { font-size: 13px; color: var(--text-2); padding: 12px 14px; }
+
+/* Quick ref */
+.ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1px; background: var(--border); }
+.ref-item { background: var(--bg); padding: 8px 12px; display: flex; gap: 8px; align-items: baseline; cursor: pointer; transition: background 0.1s; }
+.ref-item:hover { background: var(--surface); }
+.ref-token { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 40px; }
+.ref-desc { font-size: 11px; color: var(--text-2); }
+
+@media (max-width: 600px) {
+  main { padding: 12px; gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">/<span>regex</span>/ <span style="font-size:12px">playground</span></div>
+  <button class="theme-btn" id="theme-toggle">☀ light</button>
+</header>
+
+<main>
+  <!-- Pattern -->
+  <div>
+    <div class="regex-row" id="regex-row">
+      <div class="regex-delim">/</div>
+      <input id="pattern" type="text" spellcheck="false" placeholder="pattern" autocomplete="off">
+      <div class="regex-delim right">/</div>
+      <input id="flags" type="text" spellcheck="false" placeholder="gim" maxlength="6">
+    </div>
+    <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+      <span class="status" id="status"></span>
+      <span style="font-size:12px;color:var(--text-2)" id="match-count"></span>
+    </div>
+  </div>
+
+  <!-- Test text -->
+  <div class="panel">
+    <div class="panel-header">
+      Test string
+      <button style="font-size:11px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-2);cursor:pointer;padding:2px 8px" id="clear-btn">clear</button>
+    </div>
+    <div style="position:relative">
+      <textarea id="test-text" spellcheck="false">The quick brown fox jumps over the lazy dog.
+Pack my box with five dozen liquor jugs.
+How vexingly quick daft zebras jump!
+email@example.com and another.email+tag@sub.domain.org
+2024-01-15, 2023-12-31, 15/01/2024
+https://example.com/path?q=hello&lang=en#section
+IPv4: 192.168.1.1 and 10.0.0.255</textarea>
+    </div>
+  </div>
+
+  <!-- Matches -->
+  <div class="panel">
+    <div class="panel-header">Matches</div>
+    <div id="match-list" class="match-list"><div class="no-matches">Type a pattern above.</div></div>
+  </div>
+
+  <!-- Quick ref -->
+  <div class="panel">
+    <div class="panel-header">Quick reference <span style="font-weight:400;font-size:11px">(click to insert)</span></div>
+    <div class="ref-grid" id="ref-grid"></div>
+  </div>
+</main>
+
+<script>
+// Theme
+const root = document.documentElement;
+const themeBtn = document.getElementById('theme-toggle');
+let theme = localStorage.getItem('rp-theme') || 'dark';
+applyTheme(theme);
+themeBtn.addEventListener('click', () => {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  applyTheme(theme);
+  localStorage.setItem('rp-theme', theme);
+});
+function applyTheme(t) {
+  root.dataset.theme = t;
+  themeBtn.textContent = t === 'dark' ? '☀ light' : '☾ dark';
+}
+
+// Quick ref data
+const ref = [
+  ['.', 'any char except \\n'],
+  ['\\d', 'digit [0-9]'],
+  ['\\D', 'non-digit'],
+  ['\\w', 'word char [a-zA-Z0-9_]'],
+  ['\\W', 'non-word char'],
+  ['\\s', 'whitespace'],
+  ['\\S', 'non-whitespace'],
+  ['^', 'start of line'],
+  ['$', 'end of line'],
+  ['\\b', 'word boundary'],
+  ['*', '0 or more (greedy)'],
+  ['+', '1 or more (greedy)'],
+  ['?', '0 or 1'],
+  ['*?', '0 or more (lazy)'],
+  ['+?', '1 or more (lazy)'],
+  ['{n,m}', 'between n and m'],
+  ['[abc]', 'character class'],
+  ['[^abc]', 'negated class'],
+  ['(abc)', 'capture group'],
+  ['(?:abc)', 'non-capture group'],
+  ['a|b', 'alternation'],
+  ['(?=x)', 'lookahead'],
+  ['(?!x)', 'neg. lookahead'],
+];
+
+const grid = document.getElementById('ref-grid');
+const patternInput = document.getElementById('pattern');
+ref.forEach(([token, desc]) => {
+  const div = document.createElement('div');
+  div.className = 'ref-item';
+  div.innerHTML = `<span class="ref-token">${token.replace(/</g,'&lt;')}</span><span class="ref-desc">${desc}</span>`;
+  div.addEventListener('click', () => {
+    patternInput.value += token;
+    patternInput.focus();
+    update();
+  });
+  grid.appendChild(div);
+});
+
+// Core
+const flagsInput  = document.getElementById('flags');
+const textarea    = document.getElementById('test-text');
+const statusEl    = document.getElementById('status');
+const countEl     = document.getElementById('match-count');
+const matchList   = document.getElementById('match-list');
+const clearBtn    = document.getElementById('clear-btn');
+
+clearBtn.addEventListener('click', () => { textarea.value = ''; update(); });
+patternInput.addEventListener('input', update);
+flagsInput.addEventListener('input', update);
+textarea.addEventListener('input', update);
+
+function update() {
+  const pat = patternInput.value;
+  const fl  = (flagsInput.value || 'g').replace(/[^gimsuy]/g, '');
+
+  if (!pat) {
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+    countEl.textContent = '';
+    matchList.innerHTML = '<div class="no-matches">Type a pattern above.</div>';
+    return;
+  }
+
+  let rx;
+  try {
+    rx = new RegExp(pat, fl.includes('g') ? fl : fl + 'g');
+    statusEl.className = 'status ok';
+    statusEl.textContent = '✓ valid';
+  } catch (e) {
+    statusEl.className = 'status err';
+    statusEl.textContent = '✗ ' + e.message.replace(/^Invalid regular expression: \/.*\/\w*: /, '');
+    countEl.textContent = '';
+    matchList.innerHTML = '<div class="no-matches" style="color:var(--error)">Fix the pattern.</div>';
+    return;
+  }
+
+  const text = textarea.value;
+  const matches = [...text.matchAll(rx)];
+  countEl.textContent = matches.length ? `${matches.length} match${matches.length !== 1 ? 'es' : ''}` : 'no matches';
+
+  // Match list
+  if (!matches.length) {
+    matchList.innerHTML = '<div class="no-matches">No matches.</div>';
+  } else {
+    matchList.innerHTML = matches.slice(0, 200).map((m, i) => {
+      const val = m[0].replace(/&/g,'&amp;').replace(/</g,'&lt;') || '(empty)';
+      const groups = m.slice(1).filter(g => g !== undefined);
+      const grpStr = groups.length ? ` &nbsp;<span style="color:var(--text-2);font-size:11px">groups: ${groups.map(g=>`<span style="color:var(--accent)">${(g||'').replace(/</g,'&lt;')}</span>`).join(', ')}</span>` : '';
+      return `<div class="match-item">
+        <span class="match-idx">${i + 1}.</span>
+        <span class="match-val">${val}</span>
+        <span class="match-pos">@${m.index}${grpStr}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+update();
+</script>
+</body>
+</html>
